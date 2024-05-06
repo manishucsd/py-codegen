@@ -1,3 +1,6 @@
 [submodule "third-party/llvm-project"]
 	path = third-party/llvm-project
 	url = git@github.com:manishucsd/llvm-project.git
+[submodule "third-party/cutlass"]
+	path = third-party/cutlass
+	url = git@github.com:manishucsd/cutlass.git
