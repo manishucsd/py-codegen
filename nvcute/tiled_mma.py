@@ -1,8 +1,8 @@
 from mlir.dialects import nvgpu
 from pycute.layout import Layout, zipped_divide, logical_divide
-from codegen.nvgpu_builder import GmmaDescriptorBitfield
-from codegen.utils import TmaSwizzleToGmmaSwizzle, GmmaType
 from codegen.gemm import GemmShape
+from codegen.utils import TmaSwizzleToGmmaSwizzle, GmmaType
+from codegen.core.descriptor_builder import GmmaDescriptorBitfield
 from nvcute.helpers import DataType, DataTypeName, sizeof, stride
 from nvcute.tiled_copy import TmaCopy
 
