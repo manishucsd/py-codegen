@@ -20,7 +20,7 @@ This section highlights the power of CuTe concepts. PyCuTe provides MLIR Python 
 
 Figure 1 shows the definitions of `wgmma` descriptors: Leading Byte Offset (LBO) and Stride Byte Offset (SBO), which are crucial in setting the GMMA descriptor bits. The figure illustrates a `64x128x64` CTA tile and a `64x128x16` `wgmma` Tensor Core, where shared memory tiles are loaded using TMA. LBO represents the byte offset between two core matrices in the contiguous dimension (blue line), while SBO is the byte offset between core matrices in the strided dimension.
 
-Using these definitions, we can apply architecture-specific tiling operations to deduce compile-time integer values for various data types and layouts. Please refer to the PyCuTe code implemented in this work to understand how the figure converts into integers.
+Using these definitions, we can apply architecture-specific tiling operations to deduce compile-time integer values for various data types and layouts. Please refer to the PyCuTe [[code](https://github.com/manishucsd/py-codegen/blob/f63ac844dc53de68ba8fe6ebd323dfc769fc24b1/nvcute/tiled_mma.py#L13), [test](https://github.com/manishucsd/py-codegen/blob/f63ac844dc53de68ba8fe6ebd323dfc769fc24b1/nvcute_tests/make_gmma_desc.py#L10)] implemented in this work to understand how the figure converts into integers.
 
 **CuTe's layout algebra enables us to transform illustrations into code, code into integers, and integers into codegen, improving scalability, correctness, and user-experience. While it can also enhance code readability, this requires thorough familiarity with the CuTe documentation and practice.**
 
@@ -49,7 +49,7 @@ The example above demonstrates how PyCuTe aids in tiling part of a large problem
     - Number of boxes required to fill the CTA when using TMA copy.
     - Shared memory layout after the `TiledCopy` operations.
 
-- **codegen** is where we use the meta information from nvcute components and use it to generate/build kernels using MLIR Python bindings. Note that any component or file with `builder` as a suffix is an MLIR builder emitting MLIR operations. Please see [TiledMmaBuilder](https://github.com/manishucsd/py-codegen/blob/f63ac844dc53de68ba8fe6ebd323dfc769fc24b1/codegen/core/tiled_mma_builder.py) and [TiledCopyBuilder](https://github.com/manishucsd/py-codegen/blob/f63ac844dc53de68ba8fe6ebd323dfc769fc24b1/codegen/core/tiled_copy_builder.py).
+- **codegen** is where we use the meta information from `nvcute` components and use it to generate/build kernels using MLIR Python bindings. Note that any component or file with "builder" as a suffix is an NVGPU IR builder emitting MLIR operations. Please see [TiledMmaBuilder](https://github.com/manishucsd/py-codegen/blob/f63ac844dc53de68ba8fe6ebd323dfc769fc24b1/codegen/core/tiled_mma_builder.py) and [TiledCopyBuilder](https://github.com/manishucsd/py-codegen/blob/f63ac844dc53de68ba8fe6ebd323dfc769fc24b1/codegen/core/tiled_copy_builder.py).
 
 ## Related work and what about performance?
 
@@ -62,25 +62,25 @@ I set out to do this work prove to myself that we can tame the PTX on Hopper arc
   <figcaption align="center">Figure 3. Code components building a Hopper codegen solution "almost" all in Python.</figcaption>
 </p>
 
-From my experience, I am now 98% certain that this is doable and the remaining 2% is software engineering and a desing problem, but remember ["the last 2% are the hardest part and that's why they leave it in the milk."](https://youtu.be/xk_Drdc1_jM?si=qQ19FgC_JKtTkuoW) I am joking here it probably more than 2%, but it is doable. 
+From my experience, I am now 98% certain that this is doable and the remaining 2% is software engineering and design problem, but remember ["the last 2% are the hardest part and that's why they leave it in the milk."](https://youtu.be/xk_Drdc1_jM?si=qQ19FgC_JKtTkuoW) I am joking here and the remaining work is probably more than 2%, but it is doable.
 
 ### Trade-offs
-A MLIR Python-based codegenerator will have some trade-offs which we discuss next. The pros section list the advantanges of using PyCute which are also discussed above.
+An MLIR Python-based codegenerator will have some trade-offs which we discuss next. The pros section list the advantanges of using PyCute which are also discussed above.
 
 #### Pros
-- Composability : E.g. TMA + WGMMA or LDGSTS + WGMMA, or TMA + MMA.SYNC. We create `Tiled[Mma|Copy]Builder` for each of these components where we change the underlying `MmaAtom` or `CopyAtom` to change emitted PTX.
-- PyCute enhances scalability.
-- Developer productivity in getting a kernel out the door, while still having full PTX level control through Python.
-- Provided the `Tiled*Builder` components are present and developed by a CUDA expert, the user of these components can compose different kernels.
-- PyCute allows us to decoupling address offset computations from the kernel logic and putting it in a reusable components.
+
+- PyCute allows us to decoupling address offset computations from the kernel logic and putting it in a reusable components, simplifying the software design part of the problem.
+- The use of PyCute and building `Tiled*Builder` components that targets specific "Atoms" improves composibility and scalability. For e.g., we may want a kernel with various combinations [`cp.async.bulk`, `wgmma.64mNn16k.descA.descB`], [`cp.async`, `wgmma.64mNn16k`], [`cp.async.bulk`, `mma.sync.16m8n16k`], [`cp.async.bulk`, `ldmatrix`, `wgmma.64mNn16k.regA.descB`]. We create `Tiled[Mma|Copy]Builder` for each of these components where we change the underlying `MmaAtom` or `CopyAtom` to change emitted PTX.
+- Improved developer productivity in getting a kernel out of the door, while still having full PTX level control through Python.
 
 #### Cons
-- Slower than a fully-optimized codegen in C++. However, this should be faster than using nvcc on CUDA/C++ templates.
-- This will have a dependence on Python and cannot be shipped as a binary solution.
+
+- Python-based codegen will be slower than a fully-optimized codegen in C++ in speed of generating the kernel, not the kernel itself. However, the compilation times should be faster than using nvcc on CUDA/C++ templates.
+- The solution has a dependence on Python and cannot be shipped as a binary solution.
 - To use the full power of CuTe in Python and support layout algebra on runtime values, we need a "`PyCuTeBuilder`" that to emit `mlir.arith` operations on runtime values.
-This approach is more performant as a ahead-of-time compilation strategy. If Python is in the critical path it will slow down just-in-time compilation.
+- The approach is more performant as a ahead-of-time compilation strategy. If Python is in the critical path it will slow down just-in-time compilation.
 - CUTLASS/CuTe C++ is more powerful than what we intent to build out here as the C++ versions support GETT and contractions on multi-dimensional tensors.
 
-
 ### Acknowledgements
+
 "If we have seen further it is by standing on the shoulders of Giants." I express my gratitude to those whose groundbreaking work has paved the way for this study. My thanks go to the colleagues with whom I've had technical interactions and shared experience of working together. Pradeep Ramani, Haicheng Wu, Andrew Kerr, Vijay Thakker, and Cris Cecka working on CUTLASS/CuTe. Guray Ozen and Thomas Raoux on NVGPU and NVVM. Adam Paszke on JAX Moasic GPU. Quentin Colombet, Jacques Pienaar, Aart Bik, Alex Zinenko, and Mehdi Amini on MLIR.
