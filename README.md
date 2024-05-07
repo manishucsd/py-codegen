@@ -44,7 +44,7 @@ The example above demonstrates how PyCuTe aids in tiling part of a large problem
     - Computes the number `MmaAtom`[s] required to fill the CTA tile m-, n-, and k-dimensions.
     - Creates desc for A and B operands in shared memory.
     - Finds the increments in bytes along m-, n-, and k- dimensions as the `MmaAtom` are tiled on a CTA.
-  - `TiledCopy` computes the meta information required to tile TMA copy operations to fill the entire tile.
+  - [TiledCopy](https://github.com/manishucsd/py-codegen/blob/0c3c95f94f6aa7bb2bfb2bdff7ebd14e1bc6c0ff/nvcute/tiled_copy.py#L8) computes the meta information required to tile TMA copy operations to fill the entire tile.
     - Shared memory swizzle.
     - Number of boxes required to fill the CTA when using TMA copy.
     - Shared memory layout after the `TiledCopy` operations.
@@ -55,14 +55,14 @@ The example above demonstrates how PyCuTe aids in tiling part of a large problem
 
 There is existing work showcasing MLIR Python bindings targeting `mlir.nvgpu` and `mlir.nvvm` can achieve decent performance on selected cases (a) JAX mosaic GPU work (see commits [1](https://github.com/google/jax/pull/20775), [2](https://github.com/google/jax/pull/20935/files)) and (b) LLVM/MLIR work on [NVDSL](https://github.com/llvm/llvm-project/pull/87065). This work adds value by using PyCute to scale several more senario by making the codegen more general. Additionally, apply the software design philosophy similar to CUDA/C++ (CUTLASS/CuTe) in Pythonic codegen (MLIR Python bindings/PyCute).
 
-I set out to do this work prove to myself that we can tame the PTX on Hopper architecture and get close to the CUTLASS's PTX using PyCuTe and MLIR Python bindings. If we can get close CUTLASS's PTX in a way we understand it (as much as we can), we should see similar performance. Refering to Figure 3., I see CUTLASS as codegenerator where C++ compiler triggers a tree of C++ templates to reach leaf nodes of inline PTX stiched together to form a kernel.
+I set out to do this work prove to myself that we can tame the PTX on Hopper architecture and get close to the CUTLASS's PTX using PyCuTe and MLIR Python bindings. If we can get close CUTLASS's PTX in a way we understand it (as much as we can), we should see a similar performance. Refering to Figure 3., I see CUTLASS as codegenerator where C++ compiler triggers a tree of C++ templates to reach leaf nodes of inline PTX stiched together to form a kernel.
 
 <p align="center">
   <img src="./media/cutlass_c++_templates.png" alt="cutlass_c++_templates" height="200"/>
-  <figcaption align="center">Figure 3. Code components building a Hopper codegen solution "almost" all in Python.</figcaption>
+  <figcaption align="center">Figure 3. Visualization of CUTLASS/CuTe C++ compiler triggering templates to reach inline PTX.</figcaption>
 </p>
 
-From my experience, I am now 98% certain that this is doable and the remaining 2% is software engineering and design problem, but remember ["the last 2% are the hardest part and that's why they leave it in the milk."](https://youtu.be/xk_Drdc1_jM?si=qQ19FgC_JKtTkuoW) I am joking here and the remaining work is probably more than 2%, but it is doable.
+From my experience, I am now 98% certain that Hopper codegen is possible all in Python achiving performance and scalability. The remaining 2% is software engineering and design problem, but remember ["the last 2% are the hardest part and that's why they leave it in the milk."](https://youtu.be/xk_Drdc1_jM?si=qQ19FgC_JKtTkuoW) I am joking here and the remaining work is probably more than 2%, but it is doable.
 
 ### Trade-offs
 An MLIR Python-based codegenerator will have some trade-offs which we discuss next. The pros section list the advantanges of using PyCute which are also discussed above.
@@ -70,7 +70,7 @@ An MLIR Python-based codegenerator will have some trade-offs which we discuss ne
 #### Pros
 
 - PyCute allows us to decoupling address offset computations from the kernel logic and putting it in a reusable components, simplifying the software design part of the problem.
-- The use of PyCute and building `Tiled*Builder` components that targets specific "Atoms" improves composibility and scalability. For e.g., we may want a kernel with various combinations [`cp.async.bulk`, `wgmma.64mNn16k.descA.descB`], [`cp.async`, `wgmma.64mNn16k`], [`cp.async.bulk`, `mma.sync.16m8n16k`], [`cp.async.bulk`, `ldmatrix`, `wgmma.64mNn16k.regA.descB`]. We create `Tiled[Mma|Copy]Builder` for each of these components where we change the underlying `MmaAtom` or `CopyAtom` to change emitted PTX.
+- The use of PyCute and building `Tiled*Builder` components that targets specific "Atoms" improves composibility and scalability. For e.g., we may want a kernel with various combinations [`cp.async.bulk`, `wgmma.64mNn16k.descA.descB`], [`cp.async`, `wgmma.64mNn16k`], [`cp.async.bulk`, `mma.sync.16m8n16k`], [`cp.async.bulk`, `ldmatrix`, `wgmma.64mNn16k.regA.descB`]. We create `Tiled[Mma|Copy]Builder` for each of these components where we change the underlying `MmaAtom` or `CopyAtom` to change emitted PTX sequence.
 - Improved developer productivity in getting a kernel out of the door, while still having full PTX level control through Python.
 
 #### Cons
