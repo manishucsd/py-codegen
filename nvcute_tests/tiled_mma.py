@@ -52,6 +52,7 @@ class TiledMmaTestCase(parameterized.TestCase):
     print(f"tiled_mma.advance_ngroup_byte_b: {tiled_mma.advance_n_byte_b}")
     print(f"tiled_mma.mma_count: {tiled_mma.mma_count}")
     '''
+    
     self.assertEqual(tiled_mma.mma_count, expected['mma_count'])
     self.assertEqual(tiled_mma.advance_k_byte_a, expected['advance_k_byte_a'])
     self.assertEqual(tiled_mma.advance_k_byte_b, expected['advance_k_byte_b'])

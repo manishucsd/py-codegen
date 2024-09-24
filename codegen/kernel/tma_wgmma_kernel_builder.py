@@ -190,7 +190,7 @@ class TmaWgmmaKernelBuilder():
           b_tiled_copy = TmaCopyBuilder(self.b_tma_copy, mbarrier_group_op, dynamic_smem_op)
           a_gmma_desc_builder = GmmaDescriptorBuilder.from_bitfield(self.tiled_mma.desc_a).set_smem_addr(a_smem_view_op)
           b_gmma_desc_builder = GmmaDescriptorBuilder.from_bitfield(self.tiled_mma.desc_b).set_smem_addr(b_smem_view_op)
-          tiled_mma_builder = TiledMmaBuilder(self.tiled_mma)
+          tiled_mma = TiledMmaBuilder(self.tiled_mma)
           
           # Prefetch A and B TMA descriptor.
           nvgpu.tma_prefetch_descriptor(a_tma_desc_op, predicate=is_leader_op)
@@ -211,12 +211,12 @@ class TmaWgmmaKernelBuilder():
           phase_bit_op = arith.constant(T.bool(), 0)
           nvgpu.MBarrierTryWaitParityOp(mbarrier_group_op, phase_bit_op, ticks_op, mbarId=c0_op)
     
-          accums = tiled_mma_builder.init_accum_tiles()
+          accums = tiled_mma.init_accum_tiles()
 
           nvvm.WgmmaFenceAlignedOp()
           
           # Issue Tiled Mma (issuing MmaAtom to cover one GEMM-K stage of CTA tile).
-          accums = tiled_mma_builder(a_gmma_desc_builder, b_gmma_desc_builder, accums)
+          accums = tiled_mma.dot(a_gmma_desc_builder, b_gmma_desc_builder, accums)
 
           # wgmma.wait.group.sync.aligned : waits until 0 gmma operations are pending
           nvvm.WgmmaWaitGroupSyncOp(0) 
@@ -239,7 +239,7 @@ class TmaWgmmaKernelBuilder():
             row_idx_1_op = arith.AddIOp(row_idx_op, quad_id_op)
             row_idx_2_op = arith.AddIOp(row_idx_1_op, b.const_index_op(8))
       
-            for n in range(tiled_mma_builder.accum_shape[0]):
+            for n in range(tiled_mma.accum_shape[0]):
               core_accum_vector_op = vector.ExtractOp(accum_vector_op,
                                                            [],
                                                            [n])

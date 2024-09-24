@@ -36,12 +36,14 @@ class TmaCopyTestCase(parameterized.TestCase):
   ) 
   def test_gmma_desc(self, smem_shape, dtype, expected):
     tma_copy_traits = TmaCopy(smem_shape, dtype)
-    '''
+
     # Debug prints
+    '''
     print(f"\ntma_copy_traits.box_shape = {tma_copy_traits.box_shape}")
     print(f"tma_copy_traits.pitchlinear_layout = {tma_copy_traits.pitchlinear_layout}")
     print(f"tma_copy_traits.smem_layout = {tma_copy_traits.smem_layout}")
     '''
+    
     self.assertEqual(tma_copy_traits.pitchlinear_layout, expected['pitchlinear_layout'])
     self.assertEqual(tma_copy_traits.smem_layout, expected['smem_layout'])
 

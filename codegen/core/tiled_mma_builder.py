@@ -47,7 +47,7 @@ class TiledMmaBuilder:
         accum_op_arr.append(init_accum_op)
     return accum_op_arr
   
-  def __call__(self, desc_builder_a, desc_builder_b, accum_op_arr):
+  def dot(self, desc_builder_a, desc_builder_b, accum_op_arr):
     """Builds the mma operations tiled on a CTA tile"""
     for m in range(self.tiled_mma.mma_count.m):
       for n in range(self.tiled_mma.mma_count.n):
